@@ -57,32 +57,32 @@ static int get_line(int sock, char *buf, int len)
 }
 void request_404(int sock)
 {
-	char* path = "wwwroot/404.html";
-	struct stat ispath;
-	if(stat(path, &ispath) < 0)
-	{
-		return;
-	}
-	int fd = open(path, O_RDONLY);
-	if(fd < 0)
-	{
-		print_log("open failed", FATAL);
-		return;
-	}
-	char buf[SIZE];
-	memset(buf, 0, SIZE);
-	sprintf(buf, "HTTP/1.0 404 NOT Found! \r\n\r\n");
-	if(send(sock, buf, strlen(buf), 0) < 0)
-	{
-		print_log("send filed", FATAL);
-		return;
-	}
-	if(sendfile(sock, fd, NULL, sizeof(buf)) < 0)
-	{
-		print_log("sendfile failed", FATAL);
-		return;
-	}
-	close(fd);
+//	char* path = "wwwroot/404.html";
+//	struct stat ispath;
+//	if(stat(path, &ispath) < 0)
+//	{
+//		return;
+//	}
+//	int fd = open(path, O_RDONLY);
+//	if(fd < 0)
+//	{
+//		print_log("open failed", FATAL);
+//		return;
+//	}
+//	char buf[SIZE];
+//	memset(buf, 0, SIZE);
+//	sprintf(buf, "HTTP/1.0 404 NOT Found! \r\n\r\n");
+//	if(send(sock, buf, strlen(buf), 0) < 0)
+//	{
+//		print_log("send filed", FATAL);
+//		return;
+//	}
+//	if(sendfile(sock, fd, NULL, sizeof(buf)) < 0)
+//	{
+//		print_log("sendfile failed", FATAL);
+//		return;
+//	}
+//	close(fd);
 }
 
 void print_log(const char *msg, int level)
@@ -207,20 +207,20 @@ int exe_cgi(int fd, const char *method, const char* path,\
 		close(input[1]);
 		close(output[0]);
 		sprintf(METHOD, "METHOD=%s", method);
-		putenv(METHOD);
+		putenv(METHOD); //添加环境变量
 		if(strcasecmp(method, "GET") == 0)
 		{
 			sprintf(QUERY_STRING, "QUERY_STRING=%s", query_string);
-			putenv(QUERY_STRING);
+			putenv(QUERY_STRING); //GET方法在环境变量中添加query_string
 		}
 		else
 		{
 			sprintf(CONTENT_LENGTH, "CONTENT_LENGTH=%d", content_len);
-			putenv(CONTENT_LENGTH);
+			putenv(CONTENT_LENGTH);//POST方法在环境变量中添加content_len
 		}
-		dup2(input[0], 0);
+		dup2(input[0], 0); 
 		dup2(output[1], 1);
-		execl(path, path, NULL);
+		execl(path, path, NULL); //进行exec替换，环境便令不受影响
 		exit(1);
 	}
 	close(input[0]);
@@ -280,7 +280,7 @@ void* handler_request(void* argc)
 	while(i < sizeof(method) - 1 && j < sizeof(buff) && \
 			!isspace(buff[j]))
 	{
-		method[i] = buff[j];
+		method[i] = buff[j];   //得到访问的方法
 		i++, j++;
 	}
 	method[i] = 0;
@@ -292,25 +292,25 @@ void* handler_request(void* argc)
 	while(i < sizeof(url) && j < sizeof(buff) && \
 			!isspace(buff[j]))
 	{
-		url[i] = buff[j];
+		url[i] = buff[j];   //得到url
 		i++, j++;
 	}
 	url[i] = 0;
 	printf("method: %s, url: %s\n", method, url);
-	if(strcasecmp(method, "GET") && strcasecmp(method, "POST"))
+	if(strcasecmp(method, "GET") && strcasecmp(method, "POST"))  //这里只研究GET和POST方法，别的方法直接报错
 	{
 		print_log("method is not ok!", FATAL);
 		errno_num = 501;
 		goto end;
 	}
-	if(strcasecmp(method, "POST") == 0)
+	if(strcasecmp(method, "POST") == 0) //POST方法直接执行cgi模式
 	{
 		cgi = 1;
 	}
-	query_string = url;
+	query_string = url;  //在GET方法中，我们都知道url中包含了body中的内容，
 	while(*query_string != 0)
 	{
-		if(*query_string == '?')
+		if(*query_string == '?') //在url中查找是否有？号，有表示body中有内容，就执行cgi模式，并且把body中的内容拿到query_string中
 		{
 			cgi = 1;
 			*query_string = '\0';
@@ -319,7 +319,7 @@ void* handler_request(void* argc)
 		}
 		query_string++;
 	}
-	sprintf(path, "wwwroot%s", url);
+	sprintf(path, "wwwroot%s", url); //对路径进行设置
 	if(path[strlen(path)-1] == '/')
 	{
 		strcat(path, "index.html");
@@ -354,7 +354,7 @@ void* handler_request(void* argc)
 	{
 		exe_cgi(fd, method, path, query_string);
 	}
-	else
+	else  //不是cgi模式，直接处理
 	{
 		drop_header(fd);
 		errno_num = echo_www(fd, path, st.st_size);
